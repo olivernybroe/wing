@@ -328,7 +328,7 @@ module.exports = grammar({
 
     // Primitives
     _literal: ($) =>
-      choice($.string, $.number, $.bool, $.duration, $.nil_value),
+      choice($.string, $.number, $.bool, $.duration, $.nil_value, $.regex),
 
     number: ($) => choice($._integer, $._decimal),
     _integer: ($) => choice("0", /[1-9]\d*/),
@@ -357,6 +357,28 @@ module.exports = grammar({
         ),
         '"'
       ),
+    regex: $ => seq(
+      '/',
+      field('pattern', $.regex_pattern),
+      token.immediate('/'),
+      optional(field('flags', $.regex_flags))
+    ),
+    regex_pattern: $ =>
+      token.immediate(prec(-1,
+        repeat1(choice(
+          seq(
+            '[',
+            repeat(choice(
+              seq('\\', /./),
+              /[^\]\n\\]/
+            )),
+            ']'
+          ),
+          seq('\\', /./),
+          /[^/\\\[\n]/
+        ))
+      )),
+    regex_flags: $ => token.immediate(/[a-z]+/),
     template_substitution: ($) => seq("${", $.expression, "}"),
     _string_fragment: ($) => token.immediate(prec(1, /[^$"\\]+/)),
     _escape_sequence: ($) =>
@@ -457,7 +479,7 @@ module.exports = grammar({
     parameter_type_list: ($) => seq("(", commaSep($._type), ")"),
 
     builtin_type: ($) =>
-      choice("num", "bool", "any", "str", "void", "duration"),
+      choice("num", "bool", "any", "str", "void", "duration", 'regex'),
 
     initializer: ($) =>
       seq(
